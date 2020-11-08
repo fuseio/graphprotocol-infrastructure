@@ -13,8 +13,18 @@ volumes:
     nginx_html: {}
 
 services:
+
+
+
+
+
+################## graph-node container #####################
+
+
+
+
   graph-node:
-    image: graphprotocol/graph-node
+    image: graphprotocol/graph-node:latest
     container_name: graph-node
     depends_on:
       - postgres
@@ -27,9 +37,9 @@ services:
       ethereum: '${ETHEREUM}'
       ETHEREUM_START_BLOCK: ${ETHEREUM_START_BLOCK:-7710671}
       RUST_LOG: info
-      VIRTUAL_HOST: ${QUERY_HOST:-query.butterflylabs.tk}
+      VIRTUAL_HOST: ${GRAPH_NODE}
       VIRTUAL_PORT: 8000
-      LETSENCRYPT_HOST: ${QUERY_HOST:-query.butterflylabs.tk}
+      LETSENCRYPT_HOST: ${GRAPH_NODE}
     restart: unless-stopped
     ports:
       - 127.0.0.1:8020:8020
@@ -40,6 +50,17 @@ services:
       - 8040
     networks:
       - monitor-net
+
+
+
+
+
+
+################## nginx-proxy container #####################
+
+
+
+
   nginx-proxy:
     image: jwilder/nginx-proxy
     container_name: nginx-proxy
@@ -54,6 +75,17 @@ services:
     networks:
       - monitor-net
     restart: unless-stopped
+
+
+
+
+
+################## nginx-ssl container #####################
+
+
+
+
+
   nginx-ssl:
     image: jrcs/letsencrypt-nginx-proxy-companion
     container_name: nginx-ssl
@@ -68,9 +100,19 @@ services:
     restart: unless-stopped
     environment:
       NGINX_PROXY_CONTAINER: nginx-proxy
-      DEFAULT_EMAIL: ${EMAIL:-sebastian.heyden@gmail.com}
+      DEFAULT_EMAIL: ${EMAIL}
+
+
+
+
+
+
+################## postgres container #####################
+
+
+
   postgres:
-    image: postgres
+    image: postgres:latest
     container_name: postgres
     command: ["postgres", "-cshared_preload_libraries=pg_stat_statements"]
     restart: unless-stopped
@@ -84,6 +126,15 @@ services:
       - monitor-net
     expose:
       - 5432
+
+
+
+
+
+################## prometheus container #####################
+
+
+
 
   prometheus:
     image: prom/prometheus:v2.20.0
@@ -106,6 +157,18 @@ services:
     labels:
       org.label-schema.group: "monitoring"
 
+
+
+
+
+
+################## alert-manager container #####################
+
+
+
+
+
+
   alertmanager:
     image: prom/alertmanager:v0.21.0
     container_name: alertmanager
@@ -121,6 +184,16 @@ services:
       - monitor-net
     labels:
       org.label-schema.group: "monitoring"
+
+
+
+
+
+
+################## node-exporter container #####################
+
+
+
 
   nodeexporter:
     image: prom/node-exporter:v1.0.1
@@ -142,6 +215,16 @@ services:
     labels:
       org.label-schema.group: "monitoring"
 
+
+
+
+################## cadvisor container #####################
+
+
+
+
+
+
   cadvisor:
     image: gcr.io/cadvisor/cadvisor:v0.37.0
     container_name: cadvisor
@@ -150,7 +233,7 @@ services:
       - /var/run:/var/run:rw
       - /sys:/sys:ro
       - /var/lib/docker:/var/lib/docker:ro
-      - /cgroup:/cgroup:ro #doesn't work on MacOS only for Linux
+      - /cgroup:/cgroup:ro
     restart: unless-stopped
     expose:
       - 8080
@@ -159,8 +242,17 @@ services:
     labels:
       org.label-schema.group: "monitoring"
 
+
+
+
+################## grafana container #####################
+
+
+
+
+
   grafana:
-    image: grafana/grafana:7.1.1
+    image: grafana/grafana:latest
     container_name: grafana
     volumes:
       - grafana_data:/var/lib/grafana
@@ -174,9 +266,9 @@ services:
       - postgres_user=${DB_USER:-graph-node}
       - postgres_pass=${DB_PASS:-let-me-in}
       - postgres_db=${DB_NAME:-graph-node}
-      - VIRTUAL_HOST=${INDEX_HOST:-index.butterflylabs.tk}
+      - VIRTUAL_HOST=${GRAFANA_HOST}
       - VIRTUAL_PORT=3000
-      - LETSENCRYPT_HOST=${INDEX_HOST:-index.butterflylabs.tk}
+      - LETSENCRYPT_HOST=${GRAFANA_HOST}
     restart: unless-stopped
     expose:
       - 3000
@@ -184,6 +276,16 @@ services:
       - monitor-net
     labels:
       org.label-schema.group: "monitoring"
+
+
+
+
+
+################## pushgateway container #####################
+
+
+
+
 
   pushgateway:
     image: prom/pushgateway:v1.2.0
@@ -196,12 +298,21 @@ services:
     labels:
       org.label-schema.group: "monitoring"
 
+
+
+
+################## caddy container #####################
+
+
+
+
+
   caddy:
     image: stefanprodan/caddy
     container_name: caddy
     ports:
-      #- "3000:3000"
-      #- "8000:8000"
+      - "3000:3000"
+      - "8000:8000"
       - "8001:8001"
       - "9090:9090"
       - "9093:9093"
