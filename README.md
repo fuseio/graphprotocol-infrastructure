@@ -43,6 +43,12 @@ cd graphprotocol-infrastructure
 
 EMAIL=my@email GRAFANA_HOST=grafana.mydomain.tk GRAPH_NODE=graph.mydomain.tk ADMIN_USER=admin ADMIN_PASSWORD=change_me ETHEREUM="mainnet:<ETH_RPC_URL>"  ETHEREUM_START_BLOCK=7710671 docker-compose up -d
 ```
+-----------
+You can skip the SSL/Nginx part by simply spinning the infra up via:
+```
+ADMIN_USER=admin ADMIN_PASSWORD=change_me ETHEREUM="mainnet:<ETH_RPC_URL>"  ETHEREUM_START_BLOCK=7710671 docker-compose up -d
+```
+-------------------
 
 The ADMIN_USER and ADMIN_PASSWORD will be used by Grafana, Prometheus and AlertManager.
 GRAPH_NODE and GRAFANA_HOST should point to the subdomains created earlier.
