@@ -56,3 +56,12 @@
     errors stderr
     tls off
 }
+
+:8020 {
+    proxy / graph-node:8020 {
+            transparent
+        }
+
+    errors stderr
+    tls off
+}
