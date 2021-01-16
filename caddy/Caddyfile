@@ -38,15 +38,6 @@
     tls off
 }
 
-:8000 {
-    proxy / graph-node:8000 {
-            transparent
-        }
-
-    errors stderr
-    tls off
-}
-
 :8001 {
     proxy / graph-node:8001 {
             transparent
