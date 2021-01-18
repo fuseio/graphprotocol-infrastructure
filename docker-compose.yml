@@ -16,7 +16,7 @@ services:
     volumes:
       - ./data/ipfs:/data/ipfs
     ports:
-      - 127.0.0.1:5001:5001
+      - "5001:5001"
     networks:
       - monitor-net
     expose:
@@ -40,7 +40,7 @@ services:
       GRAPH_ETH_CALL_BY_NUMBER: 'false'
     restart: unless-stopped
     ports:
-      - 127.0.0.1:8000:8000
+      - "8000:8000"
     expose:
       - 8001
       - 8000
