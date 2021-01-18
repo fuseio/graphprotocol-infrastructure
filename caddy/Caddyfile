@@ -38,8 +38,18 @@
     tls off
 }
 
-:8000 {
-    proxy / graph-node:8000 {
+:8001 {
+    proxy / graph-node:8001 {
+            transparent
+            websocket
+        }
+
+    errors stderr
+    tls off
+}
+
+:8020 {
+    proxy / graph-node:8020 {
             transparent
         }
 
@@ -47,10 +57,9 @@
     tls off
 }
 
-:8001 {
-    proxy / graph-node:8001 {
+:8030 {
+    proxy / graph-node:8030 {
             transparent
-            websocket
         }
 
     errors stderr

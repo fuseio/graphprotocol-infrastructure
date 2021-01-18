@@ -5,88 +5,53 @@ networks:
     driver: bridge
 
 volumes:
-    prometheus_data: {}
-    grafana_data: {}
-    postgres_data: {}
-    nginx_certs: {}
-    nginx_vhost: {}
-    nginx_html: {}
+  prometheus_data: {}
+  grafana_data: {}
 
 services:
+
+  ipfs:
+    image: ipfs/go-ipfs:v0.4.23
+    container_name: ipfs-node
+    volumes:
+      - ./data/ipfs:/data/ipfs
+    ports:
+      - "5001:5001"
+    networks:
+      - monitor-net
+    expose:
+      - 5001
+
   graph-node:
-    image: graphprotocol/graph-node
+    image: graphprotocol/graph-node:v0.20.0
     container_name: graph-node
-    depends_on:
-      - postgres
     environment:
-      postgres_host: postgres:5432
-      postgres_user: ${DB_USER:-graph-node}
-      postgres_pass: ${DB_PASS:-let-me-in}
-      postgres_db: ${DB_NAME:-graph-node}
-      ipfs: '${IPFS_ENDPOINT:-https://testnet.thegraph.com/ipfs/}'
-      ethereum: '${ETHEREUM}'
+      postgres_host: ${DB_HOST}
+      postgres_user: ${DB_USER}
+      postgres_pass: ${DB_PASS}
+      postgres_db: ${DB_NAME}
+      ipfs: http://ipfs-node:5001
+      ethereum: ${ETHEREUM}
       ETHEREUM_START_BLOCK: ${ETHEREUM_START_BLOCK:-7710671}
       RUST_LOG: info
-      VIRTUAL_HOST: ${QUERY_HOST:-query.butterflylabs.tk}
+      VIRTUAL_HOST: ${GRAPH_NODE}
       VIRTUAL_PORT: 8000
-      LETSENCRYPT_HOST: ${QUERY_HOST:-query.butterflylabs.tk}
+      LETSENCRYPT_HOST: ${GRAPH_NODE}
+      GRAPH_ETH_CALL_BY_NUMBER: 'false'
     restart: unless-stopped
     ports:
-      - 127.0.0.1:8020:8020
+      - "8000:8000"
     expose:
       - 8001
       - 8000
       - 8030
+      - 8020
       - 8040
     networks:
       - monitor-net
-  nginx-proxy:
-    image: jwilder/nginx-proxy
-    container_name: nginx-proxy
-    ports:
-      - "80:80"
-      - "443:443"
-    volumes:
-      - /var/run/docker.sock:/tmp/docker.sock:ro
-      - nginx_certs:/etc/nginx/certs
-      - nginx_vhost:/etc/nginx/vhost.d
-      - nginx_html:/usr/share/nginx/html
-    networks:
-      - monitor-net
-    restart: unless-stopped
-  nginx-ssl:
-    image: jrcs/letsencrypt-nginx-proxy-companion
-    container_name: nginx-ssl
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock:ro
-      - nginx_certs:/etc/nginx/certs
-      - nginx_vhost:/etc/nginx/vhost.d
-      - nginx_html:/usr/share/nginx/html
-    restart: unless-stopped
-    networks:
-      - monitor-net
-    restart: unless-stopped
-    environment:
-      NGINX_PROXY_CONTAINER: nginx-proxy
-      DEFAULT_EMAIL: ${EMAIL:-sebastian.heyden@gmail.com}
-  postgres:
-    image: postgres
-    container_name: postgres
-    command: ["postgres", "-cshared_preload_libraries=pg_stat_statements"]
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${DB_USER:-graph-node}
-      POSTGRES_PASSWORD: ${DB_PASS:-let-me-in}
-      POSTGRES_DB: ${DB_NAME:-graph-node}
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    networks:
-      - monitor-net
-    expose:
-      - 5432
 
   prometheus:
-    image: prom/prometheus:v2.20.0
+    image: prom/prometheus:v2.22.1
     container_name: prometheus
     volumes:
       - ./prometheus:/etc/prometheus
@@ -143,14 +108,14 @@ services:
       org.label-schema.group: "monitoring"
 
   cadvisor:
-    image: gcr.io/cadvisor/cadvisor:v0.37.0
+    image: gcr.io/cadvisor/cadvisor:v0.38.0
     container_name: cadvisor
     volumes:
       - /:/rootfs:ro
       - /var/run:/var/run:rw
       - /sys:/sys:ro
       - /var/lib/docker:/var/lib/docker:ro
-      - /cgroup:/cgroup:ro #doesn't work on MacOS only for Linux
+      - /cgroup:/cgroup:ro
     restart: unless-stopped
     expose:
       - 8080
@@ -160,7 +125,7 @@ services:
       org.label-schema.group: "monitoring"
 
   grafana:
-    image: grafana/grafana:7.1.1
+    image: grafana/grafana:7.3.1
     container_name: grafana
     volumes:
       - grafana_data:/var/lib/grafana
@@ -170,13 +135,13 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
       - GF_SECURITY_DISABLE_BRUTE_FORCE_LOGIN_PROTECTION=true
-      - postgres_host=postgres
-      - postgres_user=${DB_USER:-graph-node}
-      - postgres_pass=${DB_PASS:-let-me-in}
-      - postgres_db=${DB_NAME:-graph-node}
-      - VIRTUAL_HOST=${INDEX_HOST:-index.butterflylabs.tk}
+      - postgres_host=${DB_HOST}
+      - postgres_user=${DB_USER}
+      - postgres_pass=${DB_PASS}
+      - postgres_db=${DB_NAME}
+      - VIRTUAL_HOST=${GRAFANA_HOST}
       - VIRTUAL_PORT=3000
-      - LETSENCRYPT_HOST=${INDEX_HOST:-index.butterflylabs.tk}
+      - LETSENCRYPT_HOST=${GRAFANA_HOST}
     restart: unless-stopped
     expose:
       - 3000
@@ -186,7 +151,7 @@ services:
       org.label-schema.group: "monitoring"
 
   pushgateway:
-    image: prom/pushgateway:v1.2.0
+    image: prom/pushgateway:v1.3.0
     container_name: pushgateway
     restart: unless-stopped
     expose:
@@ -200,9 +165,10 @@ services:
     image: stefanprodan/caddy
     container_name: caddy
     ports:
-      #- "3000:3000"
-      #- "8000:8000"
+      - "3000:3000"
       - "8001:8001"
+      - "8020:8020"
+      - "8030:8030"
       - "9090:9090"
       - "9093:9093"
       - "9091:9091"
